@@ -19,6 +19,8 @@ cd outbound-agents
 npm install -g @anthropic-ai/claude-code
 ```
 
+You'll need an [Anthropic API key](https://console.anthropic.com/) — Claude Code will prompt you to set it up on first run.
+
 ### 3. (Optional) Configure your ICP
 Edit `input/icp-config.csv` with your product info, target industries, company size range, value props, and case studies. This makes the hook writer and sequence builder write copy specific to what you sell.
 
@@ -212,6 +214,98 @@ These agents work out of the box, but you can adapt them:
 - **Reply categories** — edit `.claude/agents/reply-classifier.md` to add custom categories for your workflow
 
 Each agent is a single `.md` file — easy to read, easy to change.
+
+---
+
+## Using with Clay
+
+If you already use Clay for enrichment, you can feed Clay-enriched data directly into the pipeline and skip the auto-enrichment step entirely.
+
+### Export from Clay → Run pipeline
+1. In Clay, build a table with your target companies and run your enrichment columns
+2. Export as CSV
+3. Rename columns to match the pipeline format:
+
+| Clay Column | Pipeline Column |
+|-------------|----------------|
+| Company Name | `company_name` |
+| Industry | `industry` |
+| Headcount / Employee Count | `employee_count` |
+| Open Roles / Job Postings | `job_postings` |
+| News / Press | `recent_news` |
+| Technologies / Tech Stack | `tech_stack` |
+| Funding | `funding_info` |
+| LinkedIn Activity | `linkedin_activity` |
+
+4. Drop the CSV into `input/` and run the pipeline — the Signal Scraper will detect that data is already present and skip enrichment
+
+### Why use this alongside Clay?
+Clay is great at structured enrichment (pulling from APIs like Clearbit, Apollo, LinkedIn). This pipeline picks up where Clay stops — it **interprets** the data and turns it into scored leads, profiles, hooks, and full sequences. Think of it as: Clay enriches, these agents act on the enrichment.
+
+---
+
+## Connecting Your Own APIs for Enrichment
+
+The built-in enrichment uses web search, which works but is slower and less structured than dedicated APIs. You can swap in your own data sources to get better data and reduce token usage.
+
+### How to add an API
+Edit `.claude/agents/signal-scraper.md` and modify the enrichment step. Instead of (or in addition to) web searches, add API calls using the Bash tool. Examples:
+
+**Apollo API** — get company data + contacts:
+```
+Add to the signal-scraper tools: Bash
+Then in the enrichment step, call:
+curl -s "https://api.apollo.io/v1/organizations/enrich?domain=company.com" -H "X-Api-Key: $APOLLO_API_KEY"
+```
+
+**Clearbit** — company enrichment:
+```
+curl -s "https://company.clearbit.com/v2/companies/find?domain=company.com" -H "Authorization: Bearer $CLEARBIT_API_KEY"
+```
+
+**People Data Labs** — company + employee data:
+```
+curl -s "https://api.peopledatalabs.com/v5/company/enrich?name=Company+Name" -H "X-Api-Key: $PDL_API_KEY"
+```
+
+**LinkedIn via RapidAPI** — profile and activity data:
+```
+curl -s "https://linkedin-api.p.rapidapi.com/company/company-name" -H "X-RapidAPI-Key: $RAPIDAPI_KEY"
+```
+
+### Steps to integrate:
+1. Add `Bash` to the `tools:` line in `.claude/agents/signal-scraper.md`
+2. Set your API keys as environment variables (e.g. `export APOLLO_API_KEY=your_key`)
+3. Add API call instructions to the enrichment section of the agent
+4. The agent will call the API, parse the JSON response, and populate the CSV columns
+
+### Benefits of using APIs vs. web search
+- **Faster** — API calls return in milliseconds vs. seconds per web search
+- **More structured** — exact employee counts, funding amounts, tech stack lists
+- **Fewer tokens** — structured data means less text for the LLM to process
+- **More reliable** — APIs return consistent data; web search results vary
+
+---
+
+## Cost & Time Estimates
+
+The pipeline runs on Claude's API. Here's what to expect:
+
+| Companies | Enrichment Needed? | Approximate Time | Approximate Cost |
+|-----------|--------------------|-----------------|-----------------|
+| 5 | Yes (web search) | 3-5 min | ~$0.30-0.50 |
+| 5 | No (data provided) | 2-3 min | ~$0.15-0.25 |
+| 25 | Yes | 10-15 min | ~$1.50-2.50 |
+| 25 | No | 8-12 min | ~$0.75-1.25 |
+| 50 | Yes | 20-30 min | ~$3.00-5.00 |
+| 50 | No | 15-20 min | ~$1.50-2.50 |
+
+Costs depend on data density and how much copy the sequence builder generates. The pipeline uses Haiku for enrichment, signal scraping, and sequence building to keep costs low.
+
+**To reduce costs further:**
+- Pre-enrich with Clay or APIs (skip web search enrichment)
+- Provide complete CSVs (skip the enrichment step entirely)
+- Run only the stages you need (e.g. just signal scraper + lead prioritizer)
 
 ---
 
