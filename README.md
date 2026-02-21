@@ -10,8 +10,8 @@ Drop in a list of company names (that's it — just names), run one command, and
 
 ### 1. Clone this repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/brisbane-agents.git
-cd brisbane-agents
+git clone https://github.com/janskuba/outbound-agents.git
+cd outbound-agents
 ```
 
 ### 2. Install Claude Code
