@@ -1,0 +1,9 @@
+# Conductor workspace files
+.context/
+
+# User-specific pipeline output (keep examples/ for reference)
+output/*.csv
+!output/.gitkeep
+
+# User-specific input (keep sample files and icp-config template)
+input/companies.csv
