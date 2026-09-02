@@ -95,6 +95,8 @@ its verdict. Otherwise it did not genuinely try and the pass is void.
 
 | Agent | Purpose | Feedback lag |
 |---|---|---|
+| `blowup-eval-harness` ★ | Scores Tier-2 filters against 9 known collapses + matched controls, **blinded**; quantifies hindsight contamination | **Immediate** |
+| `rerating-researcher` ★ | How often multiples expand, what drives it, whether it is predictable OOS — and the ruling on whether a thesis may underwrite it | Weeks (historical) |
 | `calibration-scorer` | Brier/log scores by agent, sector, horizon, claim type | 1–4 quarters |
 | `post-mortem-agent` | On broken theses: what did we miss and was it knowable? | Event |
 | `base-rate-updater` | Refreshes `memory/base-rates/` from our own corpus | Quarterly |
@@ -103,6 +105,21 @@ its verdict. Otherwise it did not genuinely try and the pass is void.
 **Contract:** `heuristic-evolver` may propose but never auto-apply. Every change is reviewed,
 dated and reversible — an unreviewed self-modifying prompt loop is how a system silently
 optimises itself into nonsense.
+
+`blowup-eval-harness` and `rerating-researcher` are the two agents runnable **before any live
+data pipeline exists**, because both work on history. They are the first things to build:
+one decides whether the rejection layer works at all, the other decides whether the strategy's
+historical returns are repeatable.
+
+## Meta (`90-meta/`)
+
+| Agent | Purpose |
+|---|---|
+| `agent-architect` | Writes TANSTAAFL-conformant agent specs — and **refuses** proposals that serve no edge, duplicate an existing agent, or cannot be validated |
+
+**Contract:** the default answer to "should we build this agent?" is **no**. Every spec it
+produces carries a validation gate a third party can execute. It writes specs; it does not
+implement them.
 
 ---
 
