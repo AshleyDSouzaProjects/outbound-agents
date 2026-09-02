@@ -1,0 +1,50 @@
+=== host reachability (000 = blocked) ===
+nsearchives.nseindia.com         404
+www.nseindia.com                 403
+api.bseindia.com                 301
+www.bseindia.com                 200
+eodhd.com                        200
+query1.finance.yahoo.com         404
+pypi.org                         200
+
+=== REAL NSE bhavcopy download (the actual test) ===
+curl: (92) HTTP/2 stream 1 was not closed cleanly: INTERNAL_ERROR (err 2)
+-- BhavCopy_NSE_CM_0_0_0_20260828_F_0000.csv.zip
+   http=200 bytes=202201 type=application/zip
+   /tmp/bhav_20260828.zip: Zip archive data, at least v2.0 to extract, compression method=deflate
+   Archive:  /tmp/bhav_20260828.zip
+     Length      Date    Time    Name
+   ---------  ---------- -----   ----
+      622180  2026-08-28 11:01   BhavCopy_NSE_CM_0_0_0_20260828_F_0000.csv
+   ---------                     -------
+-- BhavCopy_NSE_CM_0_0_0_20260827_F_0000.csv.zip
+   http=200 bytes=202542 type=application/zip
+   /tmp/bhav_20260827.zip: Zip archive data, at least v2.0 to extract, compression method=deflate
+   Archive:  /tmp/bhav_20260827.zip
+     Length      Date    Time    Name
+   ---------  ---------- -----   ----
+      624269  2026-08-27 11:00   BhavCopy_NSE_CM_0_0_0_20260827_F_0000.csv
+   ---------                     -------
+-- BhavCopy_NSE_CM_0_0_0_20260826_F_0000.csv.zip
+   http=200 bytes=203590 type=application/zip
+   /tmp/bhav_20260826.zip: Zip archive data, at least v2.0 to extract, compression method=deflate
+   Archive:  /tmp/bhav_20260826.zip
+     Length      Date    Time    Name
+   ---------  ---------- -----   ----
+      629361  2026-08-26 11:00   BhavCopy_NSE_CM_0_0_0_20260826_F_0000.csv
+   ---------                     -------
+
+=== if a zip is valid, show first 3 CSV rows and the row count ===
+-- 20260828
+TradDt,BizDt,Sgmt,Src,FinInstrmTp,FinInstrmId,ISIN,TckrSymb,SctySrs,XpryDt,FininstrmActlXpryDt,StrkPric,OptnTp,FinInstrmNm,OpnPric,HghPric,LwPric,ClsPric,LastPric,PrvsClsgPric,UndrlygPric,SttlmPric,OpnIntrst,ChngInOpnIntrst,TtlTradgVol,TtlTrfVal,TtlNbOfTxsExctd,SsnId,NewBrdLotQty,Rmks,Rsvd1,Rsvd2,Rsvd3,Rsvd4
+2026-08-28,2026-08-28,CM,NSE,STK,19078,IN0020200104,SGBJUN28,GB,,,,,2.5%GOLDBONDS2028SR-III,15459.19,15644.98,15459.19,15636.18,15644.96,15638.46,,15645.88,,,108,1675993.26,43,F1,1,,,,,
+2026-08-28,2026-08-28,CM,NSE,STK,1342,IN0020200286,SGBN28VIII,GB,,,,,2.5%GOLDBONDS2028SR-VIII,15700.00,15700.00,15531.00,15630.00,15630.00,15656.74,,15632.22,,,202,3150699.89,37,F1,1,,,,,
+   rows: 3613
+
+=== BSE announcements API ===
+http=200 bytes=2
+{}
+
+=== NSE announcements API ===
+http=200 bytes=1758525
+[{"an_dt":"28-Aug-2026 23:57:42","attFileSize":"8.25 MB","attchmntFile":"https://nsearchives.nseindia.com/corporate/DYNAMATECH_28082026235520_SE_intimation_NewsPaperadv_Special_window28082026.pdf","attchmntText":"Dynamatic Technologies Limited has informed the Exchange about Copy of Newspaper Publication","bflag":null,"csvName":null,"desc":"Copy of Newspaper Publication","difference":"00:00:01","d
