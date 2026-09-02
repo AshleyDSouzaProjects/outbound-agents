@@ -7,3 +7,8 @@ output/*.csv
 
 # User-specific input (keep sample files and icp-config template)
 input/companies.csv
+
+# Python build artifacts (compiled bytecode and test caches are never committed)
+__pycache__/
+*.py[cod]
+.pytest_cache/
