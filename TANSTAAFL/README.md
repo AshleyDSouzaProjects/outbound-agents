@@ -22,7 +22,8 @@ if the lunch looks free, we have not found an edge — we have failed to find th
 
 ```
 TANSTAAFL/
-├── PLAN.md          ← start here: sources, memory, agents, 12–24mo roadmap
+├── HANDOVER.md      ← resuming work? start here: current state, what's next
+├── PLAN.md          ← the design: sources, memory, agents, 12–24mo roadmap
 ├── CLAUDE.md        operating rules for agents working in this tree
 ├── doctrine/        encoded investment principles (the "why")
 ├── ingest/          LOCAL-ONLY ingestion + the read-only CorpusReader
@@ -54,9 +55,15 @@ Type II errors (missing good investments) to avoid Type I errors (owning bad one
 
 ## Status
 
-**Pre-implementation.** This tree currently contains the plan and doctrine. Nothing is
-ingesting data and nothing is producing recommendations. See `PLAN.md` §4 for the phased
-build and the gates each phase must pass before the next begins.
+**Ingestion built and live-verified; no corpus yet; no analysis has run.**
+
+- `ingest/` is working code — 68 tests passing. NSE bhavcopy and announcements verified
+  against the live service on 2026-09-02 (`EGRESS-TEST.txt`).
+- `bse_announcements` is broken (returns empty).
+- Nothing has been ingested at scale. No screen, valuation or recommendation has ever run.
+
+See `HANDOVER.md` for what to do next, and `PLAN.md` §4 for the phased build and the gates
+each phase must pass.
 
 ## Where things run
 

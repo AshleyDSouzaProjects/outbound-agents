@@ -168,21 +168,26 @@ highest-value governance filter in the system.
 
 ## Source status
 
+Live-verified 2026-09-02 from a Full-network-access environment. Raw evidence in
+`../EGRESS-TEST.txt`.
+
 | Source | Status | Needs |
 |---|---|---|
 | `drop` | **Tested** — offline | nothing |
 | `classify` | **Tested** — 37 unit tests | nothing |
 | sync / gap logic | **Tested** — 17 unit tests incl. URL eras | nothing |
-| `nse_bhavcopy` | URL construction tested; **never run live** | residential IP, `[remote]` |
-| `bse_bhavcopy` | as above | residential IP, `[remote]` |
-| `nse_announcements` | classification tested; **fetch never run live** | residential IP, `[remote]` |
-| `bse_announcements` | as above | residential IP, `[remote]` |
+| `nse_bhavcopy` | ✅ **Verified live** — HTTP 200, valid zips, 3,613 rows/day, URL construction correct | network, `[remote]` |
+| `nse_announcements` | ✅ **Verified live** — HTTP 200, 1.76 MB / 3 days; field names match the parser | network, `[remote]` |
+| `bse_announcements` | ❌ **Broken** — 200 but empty `{}`; params or headers wrong | network, `[remote]` |
+| `bse_bhavcopy` | **Untested** — written, never run live | network, `[remote]` |
 | `screener` | **Untested** — written, never run live | `SCREENER_SESSION`, `[remote]` |
 
-The remote adapters are honest code, not stubs — NSE cookie priming, both URL eras, date-window
-chunking, BSE pagination, rate limiting — but none has executed against the live services,
-because this environment cannot reach them. **Expect to fix them on first real run.** Start with
-`--dry-run` and a one-week window.
+The NSE paths are confirmed against the live service, including the part most likely to have
+rotted: the post-UDiFF URL construction. NSE does **not** appear to block Anthropic egress IPs.
+
+`bse_announcements` needs fixing before BSE coverage means anything. Note its loop treats an
+empty `Table` as "no more pages" and stops silently — precisely the corpus-rots-unnoticed
+failure the CLI's zero-document warning exists to catch, so watch for that warning.
 
 Exchanges change formats without notice (NSE did exactly that in July 2024); `drop` is the
 fallback that always works, and the reason the system never depends on one source being reachable.
