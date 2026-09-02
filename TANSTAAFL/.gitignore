@@ -1,0 +1,22 @@
+# Credentials — never commit
+config/secrets*
+config/*.key
+config/credentials*
+.env
+
+# Raw corpus — large, immutable, reproducible from source. Track the index, not the PDFs.
+data/raw/**
+!data/raw/**/.gitkeep
+
+# Derived panels — regenerate from raw
+data/staging/**
+data/curated/**
+!data/staging/.gitkeep
+!data/curated/.gitkeep
+
+# Runtime
+__pycache__/
+*.pyc
+.duckdb
+*.parquet
+.venv/
