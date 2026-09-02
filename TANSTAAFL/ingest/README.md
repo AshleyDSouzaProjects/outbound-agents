@@ -192,6 +192,10 @@ fallback that always works, and the reason the system never depends on one sourc
 pip install -e '.[dev]' && pytest
 ```
 
-18 tests covering the store round trip, deduplication, corruption and missing-blob detection,
-the filename convention, and the point-in-time guarantees — including that a pinned reader
-cannot be widened and that a stale `Record` handle cannot bypass the cutoff.
+68 tests, runnable from the repo root or from `ingest/`:
+
+| Area | Covers |
+|---|---|
+| `test_corpus.py` | store round trip, dedup vs new-provenance, corruption and missing-blob detection, the filename convention, and every point-in-time guarantee (pinned reader cannot be widened; a stale `Record` cannot bypass the cutoff) |
+| `test_classify.py` | announcement classification against realistic NSE/BSE phrasing, precedence (auditor resignation must never be filed as a director change), determinism, and the unclassified residue |
+| `test_sync.py` | both bhavcopy URL eras and the 2024-07-08 boundary, gap computation, self-healing interrupted backfill, and `--start last` window resolution |
