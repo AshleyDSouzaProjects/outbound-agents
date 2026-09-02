@@ -116,6 +116,7 @@ date, so "what do we still need?" is a query, not a thing to keep in step. Two c
   the computed gaps.
 
 ```bash
+./bootstrap.sh                                           # first run: full backfill
 tanstaafl-ingest gaps  nse_bhavcopy --start 2005-01-01   # what's missing
 tanstaafl-ingest fetch nse_bhavcopy --start last         # catch up to today
 ```
