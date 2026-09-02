@@ -25,6 +25,8 @@ TANSTAAFL/
 ├── PLAN.md          ← start here: sources, memory, agents, 12–24mo roadmap
 ├── CLAUDE.md        operating rules for agents working in this tree
 ├── doctrine/        encoded investment principles (the "why")
+├── ingest/          LOCAL-ONLY ingestion + the read-only CorpusReader
+│                    see ingest/CONTRACT.md for the write/read boundary
 ├── agents/          agent specs by funnel tier (00-ingest → 80-learning)
 ├── data/            raw (immutable) → staging → curated panels
 ├── memory/          evidence, graph, dossiers, promise-ledger, journal,
@@ -56,9 +58,26 @@ Type II errors (missing good investments) to avoid Type I errors (owning bad one
 ingesting data and nothing is producing recommendations. See `PLAN.md` §4 for the phased
 build and the gates each phase must pass before the next begins.
 
+## Where things run
+
+Ingestion and analysis are **separate programs with opposite requirements**, and the split is
+what makes analysis reproducible:
+
+| | Ingestion (`ingest/`) | Analysis (everything else) |
+|---|---|---|
+| Network | Required | **None** |
+| Credentials | Required | **None** |
+| Runs on | Your machine (stable IP) | Anywhere — laptop, CI, cloud sandbox |
+| Reproducible | No — the web moves | **Yes** |
+
+Analysis that can reach the network cannot be reproduced: rerun it a month later and the inputs
+have changed underneath you. The corpus is the only input, and `CorpusReader` is the only
+import that crosses the line.
+
 ## Non-negotiables
 
 1. **Point-in-time integrity** — no agent sees data published after the decision date.
+   *Enforced in code* by `CorpusReader.as_of()`, not merely by instruction.
 2. **Provenance or it did not happen** — every number traces to document, page, line.
 3. **Thesis-builder ≠ thesis-killer** — separate agents, opposing mandates.
 4. **Pre-registered falsifiers** — written before the position, immutable after.

@@ -12,15 +12,22 @@ Full specs exist for those; the rest are contracts to be implemented.
 
 ---
 
-## Tier 0 — Ingestion (`00-ingest/`)
+## Tier 0 — Ingestion (`00-ingest/`) — **runs locally, not here**
 
-| Agent | Input | Output | Cadence |
+Tier 0 is **implemented, not agentic**: it is the `tanstaafl-ingest` CLI in `../ingest/`,
+which runs on the operator's machine because it needs network access, credentials and a
+residential IP. See `../ingest/CONTRACT.md`.
+
+| Component | Input | Output | Status |
 |---|---|---|---|
-| `filing-harvester` | Exchange feeds | Hashed docs → `data/raw/`, index → `memory/evidence/` | Continuous |
-| `document-parser` | Raw PDF/XBRL | Structured tables, notes, segments → `data/staging/` | On ingest |
-| `transcript-processor` | Concall audio/text | Speaker-attributed, claim-tagged → `data/staging/` | Quarterly |
+| `tanstaafl-ingest drop` | Local files | Hashed blobs → `data/raw/`, records → `memory/evidence/manifest.jsonl` | **Tested** |
+| `tanstaafl-ingest fetch screener` | Screener.in | as above | Untested live |
+| `tanstaafl-ingest fetch nse_*` | NSE | as above | Untested live |
+| `document-parser` | Raw PDF/XBRL | Structured tables, notes, segments → `data/staging/` | Not built |
+| `transcript-processor` | Concall audio/text | Speaker-attributed, claim-tagged → `data/staging/` | Not built |
 
-**Contract:** never mutate `data/raw/`. Every output carries the source hash.
+**Contract:** never mutate `data/raw/`. Every output carries the source hash. Everything above
+Tier 1 reads through `CorpusReader` and touches no network.
 
 ## Tier 1 — Extraction (`10-extract/`)
 

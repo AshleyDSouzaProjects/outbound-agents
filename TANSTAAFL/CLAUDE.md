@@ -5,9 +5,30 @@ helpfulness instincts. Read `PLAN.md` before doing substantive work here.
 
 ---
 
+## 0. Analysis runs offline
+
+**No agent above Tier 1 may touch the network.** Not for a price quote, not for a "quick
+check". The corpus is the only input.
+
+Ingestion is a separate program that runs on the operator's machine (`ingest/`, and
+`ingest/CONTRACT.md` for the boundary). Analysis reads through exactly one import:
+
+```python
+from tanstaafl_ingest import CorpusReader
+reader = CorpusReader.open().as_of(decision_date)   # pin before anything else
+```
+
+This is not a sandbox limitation, it is the point: **analysis that can reach the network cannot
+be reproduced.** Rerun it next month and the inputs have moved, and every backtest built on it
+is worthless.
+
 ## 1. Point-in-time integrity — the cardinal rule
 
 **No agent may use information published after the decision date it is reasoning about.**
+
+A pinned `CorpusReader` enforces most of this mechanically: it hides later documents, hides
+undated ones, cannot be widened, and re-checks on `read()`. Use it rather than filtering by
+hand — a rule enforced in one place is a rule that actually holds.
 
 When analysing a historical decision or running a backtest, every input must carry a
 publication timestamp, and anything later than the as-of date is invisible. This includes:
@@ -93,7 +114,12 @@ because management claims have a measurable failure rate.
 
 ## 10. Data hygiene
 
-- `data/raw/` is **append-only and immutable.** Never edit or delete. Corrections are new records.
+- `data/raw/` is **append-only and immutable.** Never edit or delete. Corrections are new
+  records. Only `ingest/` writes here; analysis has read access and nothing more.
+- **Run `tanstaafl-ingest verify` after any corpus transfer.** Silent corruption in an immutable
+  evidence store invalidates everything above it, and it is cheap to rule out.
+- A manifest entry with no blob on disk means **the corpus was not synced**, not that the
+  document does not exist. Blobs travel out of band; the manifest travels by git.
 - Credentials live in `config/` and are **never committed**. No API key, token or password in
   any file that git tracks.
 - Prices must be corporate-action adjusted. Indian names have frequent splits and bonuses;

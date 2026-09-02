@@ -185,10 +185,21 @@ on survivors. Cost per name falls by ~100× across the funnel, which is what mak
    ~5 pass          →  Tier 7 portfolio  →  Tier 8 learning (continuous)
 ```
 
-### Tier 0 — Ingestion
-- `filing-harvester` — polls exchanges, downloads, dedupes, content-hashes into L1.
+### Tier 0 — Ingestion — **runs on the operator's machine**
+
+Built as a CLI, not an agent: `ingest/` (`tanstaafl-ingest`). It is split out because ingestion
+and analysis have opposite requirements — ingestion needs network, credentials and a residential
+IP; analysis needs none of them and must be **reproducible**, which anything touching the live
+web cannot be. `ingest/CONTRACT.md` states the boundary.
+
+- `tanstaafl-ingest drop` — ingest local files; works offline. *Built and tested.*
+- `tanstaafl-ingest fetch {screener,nse_bhavcopy,nse_filings}` — remote adapters. *Written, not
+  yet run against the live services.*
 - `document-parser` — PDF/XBRL → structured tables, notes, segment data. Must handle scanned reports.
 - `transcript-processor` — concalls → speaker-attributed text, claims tagged and dated.
+
+Everything from Tier 1 upward reads through `CorpusReader`, which is stdlib-only, read-only and
+enforces the point-in-time cutoff in code.
 
 ### Tier 1 — Extraction & normalisation
 - `financial-normalizer` — common-basis restatement; consolidation, exceptionals, Ind AS breaks.

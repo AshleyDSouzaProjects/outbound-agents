@@ -1,0 +1,20 @@
+[project]
+name = "tanstaafl-ingest"
+version = "0.1.0"
+description = "Local ingestion and point-in-time corpus access for TANSTAAFL"
+requires-python = ">=3.11"
+dependencies = []          # core is stdlib-only, so the read side installs anywhere
+
+[project.optional-dependencies]
+remote = ["requests>=2.31"]   # only the network sources need this
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+tanstaafl-ingest = "tanstaafl_ingest.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
