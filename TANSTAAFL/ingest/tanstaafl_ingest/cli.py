@@ -14,6 +14,7 @@ from pathlib import Path
 from .corpus import CorpusReader
 from .sources.base import SourceUnavailable
 from .sources.drop import DropSource
+from .sync import gap_report, resolve_window
 from .store import Paths, Store
 
 
@@ -56,33 +57,114 @@ def cmd_drop(args) -> int:
     return _ingest(store, DropSource(paths), None, args.dry_run)
 
 
-def cmd_fetch(args) -> int:
-    store = Store(Paths.discover())
-    targets = None
-    if args.universe:
-        targets = [
-            ln.strip().upper()
-            for ln in Path(args.universe).read_text(encoding="utf-8").splitlines()
-            if ln.strip() and not ln.startswith("#")
-        ]
+# Earliest sensible start per source, used when neither --start nor `last` applies.
+DEFAULT_START = {
+    "nse_bhavcopy": date(2005, 1, 1),
+    "bse_bhavcopy": date(2007, 1, 1),
+    "nse_announcements": date(2015, 1, 1),
+    "bse_announcements": date(2015, 1, 1),
+}
 
-    if args.source == "screener":
+
+def _universe(path: str | None) -> list[str] | None:
+    if not path:
+        return None
+    return [
+        ln.strip().upper()
+        for ln in Path(path).read_text(encoding="utf-8").splitlines()
+        if ln.strip() and not ln.startswith("#")
+    ]
+
+
+def cmd_fetch(args) -> int:
+    paths = Paths.discover()
+    store = Store(paths)
+    targets = _universe(args.universe)
+    name = args.source
+
+    if name == "screener":
         from .sources.screener import ScreenerSource
         source = ScreenerSource()
-    elif args.source == "nse_bhavcopy":
-        from .sources.nse import NseBhavcopySource
-        source = NseBhavcopySource(
-            start=date.fromisoformat(args.start), end=date.fromisoformat(args.end)
-        )
-    elif args.source == "nse_filings":
-        from .sources.nse import NseFilingsSource
-        source = NseFilingsSource(since=date.fromisoformat(args.start))
+        print("Fetching from screener")
+        return _ingest(store, source, targets, args.dry_run)
+
+    start, end = resolve_window(
+        paths, name, args.start, args.end, DEFAULT_START.get(name, date(2015, 1, 1))
+    )
+    if start > end:
+        print(f"nothing to do: corpus is current through {end}")
+        return 0
+
+    if name == "nse_bhavcopy":
+        from .sources.bhavcopy import NseBhavcopySource
+        source = NseBhavcopySource(start, end)
+    elif name == "bse_bhavcopy":
+        from .sources.bhavcopy import BseBhavcopySource
+        source = BseBhavcopySource(start, end)
+    elif name == "nse_announcements":
+        from .sources.announcements import NseAnnouncementsSource
+        source = NseAnnouncementsSource(start, end, with_attachments=args.attachments)
+    elif name == "bse_announcements":
+        from .sources.announcements import BseAnnouncementsSource
+        source = BseAnnouncementsSource(start, end, with_attachments=args.attachments)
     else:
-        print(f"unknown source: {args.source}", file=sys.stderr)
+        print(f"unknown source: {name}", file=sys.stderr)
         return 2
 
-    print(f"Fetching from {args.source}")
+    print(f"Fetching {name}: {start} .. {end}")
     return _ingest(store, source, targets, args.dry_run)
+
+
+def cmd_gaps(args) -> int:
+    """What is missing, computed from the manifest rather than a stored cursor."""
+    paths = Paths.discover()
+    start, end = resolve_window(
+        paths, args.source, args.start, args.end,
+        DEFAULT_START.get(args.source, date(2015, 1, 1)),
+    )
+    report = gap_report(paths, args.source, start, end)
+    for key, value in report.items():
+        print(f"  {key:<15} {value}")
+    if report["missing"]:
+        print(f"\nRun: tanstaafl-ingest fetch {args.source} "
+              f"--start {report['window'][0]} --end {report['window'][1]}")
+    return 0
+
+
+def cmd_classify(args) -> int:
+    """Category histogram over ingested announcements.
+
+    Watch the unclassified share: a rise means exchange phrasing drifted and the
+    rules in classify.py need extending.
+    """
+    from .classify import Severity
+
+    reader = CorpusReader.open()
+    records = reader.records(doc_type="announcement")
+    if not records:
+        print("no announcements ingested yet")
+        return 0
+
+    hist: dict[str, int] = {}
+    vetoes: list = []
+    for r in records:
+        cat = r.meta.get("category", "unclassified")
+        hist[cat] = hist.get(cat, 0) + 1
+        if r.meta.get("severity") == Severity.VETO.value:
+            vetoes.append(r)
+
+    total = len(records)
+    for cat, n in sorted(hist.items(), key=lambda kv: -kv[1]):
+        print(f"  {cat:<24} {n:>7,}  {n/total:>6.1%}")
+    unclassified = hist.get("unclassified", 0)
+    print(f"\n  {total:,} announcements, {unclassified/total:.1%} unclassified")
+
+    if vetoes:
+        print(f"\n  {len(vetoes)} VETO-grade event(s):")
+        for r in vetoes[: args.limit]:
+            print(f"    {r.published_at}  {r.company or '?':<12} "
+                  f"{r.meta.get('category'):<22} {r.meta.get('subject', '')[:60]}")
+    return 0
 
 
 def cmd_verify(args) -> int:
@@ -147,12 +229,30 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("paths", nargs="+")
     p.set_defaults(func=cmd_drop)
 
+    sources = [
+        "nse_bhavcopy", "bse_bhavcopy",
+        "nse_announcements", "bse_announcements",
+        "screener",
+    ]
+
     p = sub.add_parser("fetch", help="fetch from a remote source (local machine only)")
-    p.add_argument("source", choices=["screener", "nse_bhavcopy", "nse_filings"])
+    p.add_argument("source", choices=sources)
     p.add_argument("--universe", help="file of tickers, one per line")
-    p.add_argument("--start", help="ISO date")
-    p.add_argument("--end", help="ISO date")
+    p.add_argument("--start", help="ISO date, or 'last' to continue from the corpus")
+    p.add_argument("--end", help="ISO date (default: today)")
+    p.add_argument("--attachments", action="store_true",
+                   help="also fetch attachment PDFs for analytically weighty categories")
     p.set_defaults(func=cmd_fetch)
+
+    p = sub.add_parser("gaps", help="what is missing, computed from the manifest")
+    p.add_argument("source", choices=sources)
+    p.add_argument("--start", help="ISO date, or 'last'")
+    p.add_argument("--end", help="ISO date")
+    p.set_defaults(func=cmd_gaps)
+
+    p = sub.add_parser("classify", help="category histogram over ingested announcements")
+    p.add_argument("--limit", type=int, default=20, help="veto events to list")
+    p.set_defaults(func=cmd_classify)
 
     p = sub.add_parser("verify", help="re-hash every blob against the manifest")
     p.set_defaults(func=cmd_verify)

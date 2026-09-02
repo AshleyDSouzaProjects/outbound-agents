@@ -35,8 +35,8 @@ tanstaafl-ingest drop ~/Downloads/annual-reports/
 
 # Fetch from a remote source. Local machine only.
 tanstaafl-ingest fetch screener --universe config/nifty500.txt
-tanstaafl-ingest fetch nse_bhavcopy --start 2010-01-01 --end 2026-08-31
-tanstaafl-ingest fetch nse_filings --universe config/nifty500.txt --start 2024-01-01
+tanstaafl-ingest fetch nse_bhavcopy --start last          # daily catch-up
+tanstaafl-ingest fetch nse_announcements --start last --attachments
 
 # Re-hash every blob against the manifest. Run after any transfer.
 tanstaafl-ingest verify
@@ -106,22 +106,85 @@ tanstaafl-ingest verify
 If the manifest is present but blobs are not, `reader.read()` fails with a message saying the
 corpus was not synced, rather than a bare missing-file error.
 
+## Staying current
+
+**There is no cursor or state file.** The manifest already records every document and its
+date, so "what do we still need?" is a query, not a thing to keep in step. Two consequences:
+
+- A daily update is `--start last`, which resumes from the day after the newest document held.
+- An interrupted backfill is **self-healing** — kill it halfway, rerun it, and it resumes from
+  the computed gaps.
+
+```bash
+tanstaafl-ingest gaps  nse_bhavcopy --start 2005-01-01   # what's missing
+tanstaafl-ingest fetch nse_bhavcopy --start last         # catch up to today
+```
+
+Schedule it (cron, weekdays after the ~19:00 IST publication):
+
+```cron
+30 20 * * 1-5  cd ~/tanstaafl/TANSTAAFL/ingest && \
+               tanstaafl-ingest fetch nse_bhavcopy --start last >> ~/logs/bhav.log 2>&1
+0  21 * * 1-5  cd ~/tanstaafl/TANSTAAFL/ingest && \
+               tanstaafl-ingest fetch nse_announcements --start last --attachments >> ~/logs/ann.log 2>&1
+```
+
+On macOS use a `launchd` plist instead — it runs missed jobs after a wake, which cron does not.
+Either way a run against a current corpus is a no-op, so over-scheduling is harmless.
+
+## Backfilling 20 years
+
+Do it in slices, not one run — a 5,000-day sweep from one IP invites a temporary ban:
+
+```bash
+for y in $(seq 2005 2026); do
+  tanstaafl-ingest fetch nse_bhavcopy --start $y-01-01 --end $y-12-31
+  sleep 300
+done
+tanstaafl-ingest gaps nse_bhavcopy --start 2005-01-01   # confirm, then re-run for stragglers
+```
+
+Long runs of missing days mean a dead URL era or a rate-limit ban, not holidays — `gaps` shows
+the first few so you can tell which.
+
+## Announcement classification
+
+Every announcement is classified on ingest by `classify.py` — **deterministic rules, not an
+LLM**, because a backtest must give identical answers on every rerun, ~375k announcements is a
+one-cent problem with regexes, and every classification cites the exact substring that matched.
+
+```bash
+tanstaafl-ingest classify        # category histogram + veto-grade events
+```
+
+Five categories carry `VETO` severity and feed `governance-sentinel`'s hard-reject authority:
+`auditor_resignation`, `auditor_qualification`, `pledge_invocation`, `insolvency`, `default`.
+
+**Watch the unclassified share.** A rise means exchange phrasing drifted and the rules need
+extending. Precision is deliberately favoured over recall: an untagged announcement is caught
+by the annual full-text pass, whereas a mis-tagged auditor resignation silently defeats the
+highest-value governance filter in the system.
+
 ## Source status
 
 | Source | Status | Needs |
 |---|---|---|
-| `drop` | **Tested** — 18 unit tests | nothing |
+| `drop` | **Tested** — offline | nothing |
+| `classify` | **Tested** — 37 unit tests | nothing |
+| sync / gap logic | **Tested** — 17 unit tests incl. URL eras | nothing |
+| `nse_bhavcopy` | URL construction tested; **never run live** | residential IP, `[remote]` |
+| `bse_bhavcopy` | as above | residential IP, `[remote]` |
+| `nse_announcements` | classification tested; **fetch never run live** | residential IP, `[remote]` |
+| `bse_announcements` | as above | residential IP, `[remote]` |
 | `screener` | **Untested** — written, never run live | `SCREENER_SESSION`, `[remote]` |
-| `nse_bhavcopy` | **Untested** — written, never run live | residential IP, `[remote]` |
-| `nse_filings` | **Untested** — written, never run live | residential IP, `[remote]` |
 
-The remote adapters are honest code, not stubs — cookie priming for NSE, session handling and
-expiry detection for Screener — but they have never executed against the live services, because
-this environment cannot reach them. **Expect to fix them on first real run.** Start with
-`--dry-run` and a two-ticker universe.
+The remote adapters are honest code, not stubs — NSE cookie priming, both URL eras, date-window
+chunking, BSE pagination, rate limiting — but none has executed against the live services,
+because this environment cannot reach them. **Expect to fix them on first real run.** Start with
+`--dry-run` and a one-week window.
 
-Both services may also change or restrict access; `drop` is the fallback that always works, and
-the reason the system never depends on any single source being reachable.
+Exchanges change formats without notice (NSE did exactly that in July 2024); `drop` is the
+fallback that always works, and the reason the system never depends on one source being reachable.
 
 ## Tests
 
